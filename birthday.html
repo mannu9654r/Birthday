@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happy Birthday | Aaashu</title>
+    
+    <!-- Fonts: Inter (UI) and Playfair Display (Emotional/Elegant) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    
+    <!-- Confetti Library -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        /* --- 1. CORE VARIABLES & RESET --- */
+        :root {
+            --bg-color: #050505;
+            --text-main: #e0e0e0;
+            --text-muted: #888888;
+            --accent-glow: #7000ff;
+            --accent-secondary: #00d4ff;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --font-ui: 'Inter', sans-serif;
+            --font-elegant: 'Playfair Display', serif;
+            --cursor-size: 20px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            cursor: none; /* Custom cursor used */
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-ui);
+            overflow-x: hidden;
+            width: 100vw;
+            height: 100vh;
+            /* Hide scrollbar for immersion but allow scrolling */
+            scrollbar-width: none; 
+            -ms-overflow-style: none;
+        }
+        body::-webkit-scrollbar { display: none; }
+
+        /* --- 2. AMBIENT BACKGROUNDS --- */
+        #canvas-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.6;
+        }
+
+        .noise-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        /* --- 3. CUSTOM CURSOR --- */
+        .cursor-dot,
+        .cursor-outline {
+            position: fixed;
+            top: 0;
+            left: 0;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            z-index: 10000;
+            pointer-events: none;
+        }
+        .cursor-dot {
+            width: 8px;
+            height: 8px;
+            background-color: white;
+        }
+        .cursor-outline {
+            width: 40px;
+            height: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            transition: width 0.2s, height 0.2s, background-color 0.2s;
+        }
+        /* Hover state for cursor */
+        body.hovering .cursor-outline {
+            width: 60px;
+            height: 60px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-color: transparent;
+            backdrop-filter: blur(2px);
+        }
+
+        /* --- 4. ENTRANCE GATE --- */
+        #entrance-screen {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 5000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 1.5s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+        
+        .enter-btn {
+            background: transparent;
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 1.5rem 3rem;
+            font-family: var(--font-ui);
+            font-size: 1rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            border-radius: 100px;
+            cursor: none; /* logical cursor is none, handled by custom */
+            transition: all 0.5s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .enter-btn::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: 0.5s;
+        }
+        
+        .enter-btn:hover {
+            border-color: white;
+            box-shadow: 0 0 30px rgba(255,255,255,0.1);
+        }
+        .enter-btn:hover::before {
+            left: 100%;
+        }
+
+        /* --- 5. MAIN CONTENT STRUCTURE --- */
+        #main-wrapper {
+            opacity: 0; /* Hidden initially */
+            transition: opacity 2s ease;
+            max-width: 100%;
+            overflow: hidden;
+        }
+
+        section {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            position: relative;
+        }
+
+        /* --- 6. HERO SECTION --- */
+        .hero-title {
+            font-family: var(--font-elegant);
+            font-size: clamp(3rem, 8vw, 8rem);
+            line-height: 1;
+            text-align: center;
+            background: linear-gradient(135deg, #fff 0%, #aaa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            opacity: 0;
+            transform: translateY(50px);
+            transition: all 1.5s ease;
+        }
+
+        .hero-subtitle {
+            margin-top: 1.5rem;
+            font-size: 1rem;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 1.5s ease 0.3s;
+        }
+
+        .scroll-indicator {
+            position: absolute;
+            bottom: 40px;
+            font-size: 0.8rem;
+            opacity: 0.5;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(10px); }
+        }
+
+        /* --- 7. MEMORY GRID (BENTO STYLE) --- */
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 1200px;
+            padding: 20px;
+        }
+
+        .bento-item {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            height: 300px;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+            opacity: 0; /* Animated on scroll */
+            transform: translateY(30px);
+        }
+        
+        .bento-item:hover {
+            transform: scale(1.02);
+            z-index: 2;
+            border-color: rgba(255,255,255,0.3);
+        }
+
+        .bento-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.8s ease;
+            filter: grayscale(40%) contrast(110%);
+        }
+
+        .bento-item:hover img {
+            transform: scale(1.1);
+            filter: grayscale(0%);
+        }
+
+        /* --- 8. THE LETTER --- */
+        .letter-container {
+            max-width: 700px;
+            text-align: left;
+            background: linear-gradient(180deg, rgba(20,20,20,0.8), rgba(0,0,0,0));
+            padding: 3rem;
+            border-radius: 20px;
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(10px);
+            opacity: 0;
+            transform: translateY(50px);
+            transition: all 1s ease;
+        }
+
+        .letter-text {
+            font-family: var(--font-elegant);
+            font-size: 1.5rem;
+            line-height: 1.8;
+            color: #d1d1d1;
+        }
+        
+        .highlight {
+            color: var(--accent-secondary);
+            font-style: italic;
+        }
+
+        /* --- 9. THE INTERACTIVE WISH (ORB) --- */
+        .wish-section {
+            text-align: center;
+        }
+
+        .orb-container {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            margin: 0 auto 2rem auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .orb {
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.8), var(--accent-glow));
+            border-radius: 50%;
+            box-shadow: 0 0 60px var(--accent-glow), 0 0 100px var(--accent-secondary);
+            cursor: none;
+            transition: transform 0.2s ease, width 0.2s, height 0.2s;
+            z-index: 10;
+        }
+
+        .orb-ring {
+            position: absolute;
+            top: 0; left: 0;
+            width: 200px; height: 200px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+
+        .orb-progress {
+            position: absolute;
+            top: 0; left: 0;
+            width: 200px; height: 200px;
+            border-radius: 50%;
+            border: 2px solid var(--accent-secondary);
+            border-top-color: transparent;
+            border-left-color: transparent;
+            border-right-color: transparent;
+            transform: rotate(-45deg);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .instruction {
+            margin-top: 2rem;
+            font-size: 0.9rem;
+            opacity: 0.7;
+            letter-spacing: 0.1em;
+        }
+
+        /* --- UTILS --- */
+        .visible {
+            opacity: 1 !important;
+            transform: translateY(0) !important;
+        }
+
+        /* --- AUDIO --- */
+        #bg-music { display: none; }
+
+    </style>
+</head>
+<body>
+
+    <!-- NOISE TEXTURE -->
+    <div class="noise-overlay"></div>
+
+    <!-- CANVAS BACKGROUND -->
+    <canvas id="canvas-bg"></canvas>
+
+    <!-- CUSTOM CURSOR -->
+    <div class="cursor-dot" data-cursor></div>
+    <div class="cursor-outline" data-cursor></div>
+
+    <!-- AUDIO FILE (Replace src with your file or use this minimal ambient loop) -->
+    <!-- [EDIT] Add a link to a nice MP3 here. This is a placeholder for logic. -->
+    <audio id="bg-music" loop>
+        <source src="https://assets.mixkit.co/music/preview/mixkit-dreaming-big-31.mp3" type="audio/mp3">
+    </audio>
+
+    <!-- SCENE 1: ENTRANCE -->
+    <div id="entrance-screen">
+        <button class="enter-btn interactive-hover" id="enter-btn">Unlock Experience</button>
+    </div>
+
+    <!-- MAIN SCROLLABLE WRAPPER -->
+    <main id="main-wrapper">
+        
+        <!-- SCENE 2: HERO -->
+        <section id="hero">
+            <!-- [EDIT] Change Name Below -->
+            <h1 class="hero-title">Happy Birthday,<br>Anshu</h1>
+            <p class="hero-subtitle"> </p>
+            <div class="scroll-indicator">Scroll pls Madam ji </div>
+        </section>
+
+        <!-- SCENE 3: GALLERY (Bento Grid) -->
+        <section id="gallery">
+            <div class="bento-grid">
+                <!-- [EDIT] Replace src with actual image URLs -->
+                <div class="bento-item interactive-hover">
+                    <img src="A1.jpg" alt="Memory 1">
+                </div>
+                <div class="bento-item interactive-hover">
+                    <img src="A2.jpg" alt="Memory 2">
+                </div>
+                <div class="bento-item interactive-hover">
+                    <img src="A3.jpg" alt="Memory 3">
+                </div>
+                <div class="bento-item interactive-hover">
+                    <img src="A4.jpg" alt="Memory 4">
+                </div>
+            </div>
+        </section>
+
+        <!-- SCENE 4: THE MESSAGE -->
+        <section id="message">
+            <div class="letter-container interactive-hover">
+                <!-- [EDIT] Your heartfelt message goes here -->
+                <p class="letter-text">
+                    "To the person who lights up every room they enter.<br><br>
+                    Watching you grow and evolve has been the greatest privilege. 
+                    Your kindness, your chaotic energy, and your <span class="highlight">beautiful soul</span> inspire me every single day.
+                    <br><br>
+                    
+                </p>
+            </div>
+        </section>
+
+        <!-- SCENE 5: THE WISH -->
+        <section id="wish" class="wish-section">
+            <div class="orb-container interactive-hover" id="wish-btn">
+                <div class="orb-ring"></div>
+                <div class="orb-progress" id="orb-progress"></div>
+                <div class="orb"></div>
+            </div>
+            <p class="instruction" id="wish-text">Hold to Make a Wish</p>
+        </section>
+
+        <footer style="padding: 2rem; opacity: 0.5; font-size: 0.8rem; text-align: center;">
+            Made with ❤️ for you.
+        </footer>
+
+    </main>
+
+    <script>
+        // --- 1. CURSOR LOGIC ---
+        const cursorDot = document.querySelector('.cursor-dot');
+        const cursorOutline = document.querySelector('.cursor-outline');
+        
+        window.addEventListener('mousemove', (e) => {
+            const posX = e.clientX;
+            const posY = e.clientY;
+
+            // Dot follows instantly
+            cursorDot.style.left = `${posX}px`;
+            cursorDot.style.top = `${posY}px`;
+
+            // Outline follows with slight delay (animation in CSS helps, but keyframes needed for smooth trail)
+            cursorOutline.animate({
+                left: `${posX}px`,
+                top: `${posY}px`
+            }, { duration: 500, fill: "forwards" });
+        });
+
+        // Hover effects for cursor
+        document.querySelectorAll('.interactive-hover').forEach(el => {
+            el.addEventListener('mouseenter', () => document.body.classList.add('hovering'));
+            el.addEventListener('mouseleave', () => document.body.classList.remove('hovering'));
+        });
+
+        // --- 2. ENTRANCE LOGIC ---
+        const enterBtn = document.getElementById('enter-btn');
+        const entranceScreen = document.getElementById('entrance-screen');
+        const mainWrapper = document.getElementById('main-wrapper');
+        const bgMusic = document.getElementById('bg-music');
+        const heroTitle = document.querySelector('.hero-title');
+        const heroSub = document.querySelector('.hero-subtitle');
+
+        enterBtn.addEventListener('click', () => {
+            // Play Audio
+            bgMusic.volume = 0.5;
+            bgMusic.play().catch(e => console.log("Audio play failed (browser policy):", e));
+
+            // Fade out gate
+            entranceScreen.style.opacity = '0';
+            setTimeout(() => {
+                entranceScreen.style.display = 'none';
+                mainWrapper.style.opacity = '1';
+                
+                // Trigger Hero Animations
+                setTimeout(() => heroTitle.classList.add('visible'), 500);
+                setTimeout(() => heroSub.classList.add('visible'), 800);
+            }, 1000);
+        });
+
+        // --- 3. SCROLL OBSERVER ---
+        const observerOptions = {
+            threshold: 0.2
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    // Optional: Stop observing once visible
+                    // observer.unobserve(entry.target);
+                }
+            });
+        }, observerOptions);
+
+        // Target elements to animate
+        document.querySelectorAll('.bento-item, .letter-container').forEach(el => {
+            observer.observe(el);
+        });
+
+        // --- 4. HOLD TO WISH LOGIC ---
+        const wishBtn = document.getElementById('wish-btn');
+        const progressRing = document.getElementById('orb-progress');
+        const wishText = document.getElementById('wish-text');
+        let holdTimer;
+        let scale = 1;
+        let holding = false;
+
+        const startHold = () => {
+            holding = true;
+            let progress = 0;
+            wishText.innerText = "Keep Holding...";
+            
+            // Animate Orb Size
+            wishBtn.querySelector('.orb').style.transform = "scale(0.9)";
+            
+            // CSS Rotation Animation manually via JS interval for progress visual
+            let degree = 0;
+            progressRing.style.opacity = 1;
+
+            holdTimer = setInterval(() => {
+                progress += 2;
+                degree += 10;
+                
+                // Visual feedback
+                progressRing.style.borderTopColor = 'var(--accent-secondary)';
+                progressRing.style.borderRightColor = 'var(--accent-secondary)';
+                progressRing.style.borderBottomColor = 'var(--accent-secondary)';
+                progressRing.style.transform = `rotate(${degree}deg)`;
+
+                if (progress >= 100) {
+                    successWish();
+                }
+            }, 30);
+        };
+
+        const endHold = () => {
+            holding = false;
+            clearInterval(holdTimer);
+            wishBtn.querySelector('.orb').style.transform = "scale(1)";
+            progressRing.style.opacity = 0;
+            if(wishText.innerText !== "Make a Wish!") wishText.innerText = "Hold to Make a Wish";
+        };
+
+        const successWish = () => {
+            clearInterval(holdTimer);
+            holding = false;
+            wishText.innerText = "Happy Birthday! ✨";
+            
+            // Explosion Effect
+            wishBtn.querySelector('.orb').style.transform = "scale(1.5)";
+            wishBtn.querySelector('.orb').style.opacity = "0";
+            
+            triggerConfetti();
+            
+            setTimeout(() => {
+                wishBtn.querySelector('.orb').style.transform = "scale(1)";
+                wishBtn.querySelector('.orb').style.opacity = "1";
+            }, 2000);
+        };
+
+        wishBtn.addEventListener('mousedown', startHold);
+        wishBtn.addEventListener('mouseup', endHold);
+        wishBtn.addEventListener('mouseleave', endHold);
+        
+        // Touch support for mobile
+        wishBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startHold(); });
+        wishBtn.addEventListener('touchend', endHold);
+
+        function triggerConfetti() {
+            var duration = 3 * 1000;
+            var animationEnd = Date.now() + duration;
+            var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+            var random = function(min, max) {
+            return Math.random() * (max - min) + min;
+            }
+
+            var interval = setInterval(function() {
+            var timeLeft = animationEnd - Date.now();
+
+            if (timeLeft <= 0) {
+                return clearInterval(interval);
+            }
+
+            var particleCount = 50 * (timeLeft / duration);
+            // since particles fall down, start a bit higher than random
+            confetti(Object.assign({}, defaults, { particleCount, origin: { x: random(0.1, 0.3), y: Math.random() - 0.2 } }));
+            confetti(Object.assign({}, defaults, { particleCount, origin: { x: random(0.7, 0.9), y: Math.random() - 0.2 } }));
+            }, 250);
+        }
+
+        // --- 5. CANVAS STARFIELD BACKGROUND ---
+        const canvas = document.getElementById('canvas-bg');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        let stars = [];
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        class Star {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.size = Math.random() * 1.5;
+                this.speedX = (Math.random() - 0.5) * 0.5;
+                this.speedY = (Math.random() - 0.5) * 0.5;
+                this.brightness = Math.random();
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                
+                // Wrap around screen
+                if (this.x < 0) this.x = width;
+                if (this.x > width) this.x = 0;
+                if (this.y < 0) this.y = height;
+                if (this.y > height) this.y = 0;
+                
+                // Twinkle
+                this.brightness += (Math.random() - 0.5) * 0.1;
+                if(this.brightness > 1) this.brightness = 1;
+                if(this.brightness < 0) this.brightness = 0;
+            }
+            draw() {
+                ctx.fillStyle = `rgba(255, 255, 255, ${this.brightness})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function initStars() {
+            for(let i=0; i<150; i++) {
+                stars.push(new Star());
+            }
+        }
+
+        function animateStars() {
+            ctx.clearRect(0, 0, width, height);
+            stars.forEach(star => {
+                star.update();
+                star.draw();
+            });
+            requestAnimationFrame(animateStars);
+        }
+
+        initStars();
+        animateStars();
+
+    </script>
+</body>
+</html>
